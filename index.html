@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Gemini Image to 3D Generator</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 30px;
+            background: #f7f7f7;
+        }
+
+        input,
+        button {
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        img {
+            margin-top: 20px;
+            max-width: 400px;
+            border-radius: 8px;
+        }
+
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 4px;
+            display: none;
+        }
+
+        #status.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #4285f4;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        a {
+            color: #4285f4;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>Gemini AI Image to 3D Generator</h2>
+    <input id="prompt" placeholder="Enter an image prompt..." size="50" /><br />
+    <button id="generateBtn" onclick="startWorkflow()">Generate & Convert to 3D</button>
+
+    <div id="status">
+        <div id="statusText">Starting...</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+    </div>
+
+    <img id="outputImage" alt="Generated image will appear here" /><br />
+    <a id="downloadLink" href="" download="model.glb" style="display:none;">Download 3D Model →</a>
+    <a id="arLink" href="/ar.html" target="_blank" style="display:none;">View in AR →</a>
+
+    <script>
+        async function startWorkflow() {
+            const prompt = document.getElementById("prompt").value;
+            if (!prompt) return alert("Please enter a prompt!");
+
+            const statusDiv = document.getElementById("status");
+            const statusText = document.getElementById("statusText");
+            const progressFill = document.getElementById("progressFill");
+            const generateBtn = document.getElementById("generateBtn");
+            const outputImage = document.getElementById("outputImage");
+            const downloadLink = document.getElementById("downloadLink");
+            const arLink = document.getElementById("arLink");
+
+            generateBtn.disabled = true;
+            statusDiv.className = "show";
+            statusText.textContent = "Generating image & uploading...";
+            progressFill.style.width = "10%";
+            downloadLink.style.display = "none";
+            arLink.style.display = "none";
+
+            try {
+                // Step 1: Start GLB generation
+                const startRes = await fetch("/api/start-glb", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt })
+                });
+                const startData = await startRes.json();
+                if (!startData.success) throw new Error(startData.error || "Failed to start generation");
+
+                // Show generated image immediately
+                outputImage.src = `${startData.imagePath}?${Date.now()}`;
+                progressFill.style.width = "30%";
+
+                const taskId = startData.taskId;
+
+                // Step 2: Poll task status
+                let done = false;
+                let progress = 30;
+                while (!done) {
+                    await new Promise(r => setTimeout(r, 3000));
+                    const statusRes = await fetch(`/api/check-task/${taskId}`);
+                    const statusData = await statusRes.json();
+
+                    if (statusData.status === "completed" || statusData.status === "success") {
+                        progressFill.style.width = "100%";
+                        downloadLink.href = statusData.glbUrl;
+                        downloadLink.style.display = "inline-block";
+                        arLink.style.display = "inline-block";
+                        statusText.textContent = "✅ 3D model ready!";
+                        done = true;
+                    } else if (statusData.status === "failed") {
+                        statusText.textContent = "✗ Task failed!";
+                        done = true;
+                    } else {
+                        // Increment progress bar gradually
+                        progress = Math.min(progress + 5, 90);
+                        progressFill.style.width = progress + "%";
+                        statusText.textContent = `Processing... (${statusData.status})`;
+                    }
+                }
+
+            } catch (err) {
+                statusText.textContent = "✗ Error: " + err.message;
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+    </script>
+
+</body>
+
+</html>
