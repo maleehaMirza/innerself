@@ -17,11 +17,34 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "index.html"));
 });
 
+function buildGeminiPrompt(quizType, answers) {
+    const appearance = answers[0] || "generic appearance"; // your new question
+    const roomTheme = answers[1] || "neutral modern";
+    const keyActivity = answers[2] || "relaxing";
+    const coreValue = answers[3] || "curiosity";
+    const popularTrait = answers[4] || "helpful";
+
+    const prompt = `
+    Create an isometric 3D cube-shaped miniature room (shallow cutaway true cube; everything strictly contained within the cube). 
+    The room is ${roomTheme} theme, furniture related to ${keyActivity}, wall decorations and key items reflecting ${coreValue}, with items hinting at '${popularTrait}']. 
+    Character: a chibi/figurine-style — ${appearance}. 
+    The character is ${keyActivity}, with a happy and focused expression. 
+    Figure material looks like matte PVC, with big head / small body proportions. 
+    Lighting: warm. Realistic reflections and colored shadows. 
+    Camera: slightly elevated isometric three-quarter view, front cube solid color edge centered; no elements protruding outside the cube. 
+    Photoreal materials with fine detail; neutral backdrop. Ultra-detailed, clean composition; no watermark
+    `;
+    return prompt;
+}
+
 // Step 1: Start generation & upload, return taskId immediately
 app.post("/api/start-glb", async (req, res) => {
     try {
-        const { prompt } = req.body;
-        if (!prompt) return res.status(400).json({ error: "Prompt is required" });
+        const { quizType, answers } = req.body;
+        if (!quizType || !answers) return res.status(400).json({ error: "quizType and answers are required" });
+
+        // Generate prompt from answers
+        const prompt = buildGeminiPrompt(quizType, answers);
 
         // 1️⃣ Generate image from Gemini
         const gemResponse = await genAI.models.generateContent({

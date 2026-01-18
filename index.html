@@ -2,163 +2,221 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8" />
-    <title>Gemini Image to 3D Generator</title>
-    <style>
-        body {
-            font-family: Arial;
-            padding: 30px;
-            background: #f7f7f7;
-        }
-
-        input,
-        button {
-            padding: 10px;
-            font-size: 16px;
-            margin-top: 10px;
-        }
-
-        button {
-            background: #4285f4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        img {
-            margin-top: 20px;
-            max-width: 400px;
-            border-radius: 8px;
-        }
-
-        #status {
-            margin-top: 20px;
-            padding: 15px;
-            background: #e3f2fd;
-            border-radius: 4px;
-            display: none;
-        }
-
-        #status.show {
-            display: block;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #ddd;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: #4285f4;
-            width: 0%;
-            transition: width 0.3s;
-        }
-
-        a {
-            color: #4285f4;
-            text-decoration: none;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Innerself </title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
+    <div class="container">
+        <div id="home" class="home-screen">
+            <h1>InnerSelf ✨</h1>
+            <p class="subtitle">A journey through present and future</p>
 
-    <h2>Gemini AI Image to 3D Generator</h2>
-    <input id="prompt" placeholder="Enter an image prompt..." size="50" /><br />
-    <button id="generateBtn" onclick="startWorkflow()">Generate & Convert to 3D</button>
+            <div class="home-buttons">
+                <button class="btn btn-present" onclick="startQuiz('present')">Discover Present Self 📌</button>
+                <button class="btn btn-future" onclick="startQuiz('future')">Discover Future Self 🔮</button>
+            </div>
+        </div>
 
-    <div id="status">
-        <div id="statusText">Starting...</div>
-        <div class="progress-bar">
-            <div class="progress-fill" id="progressFill"></div>
+        <div id="imageUpload" class="quiz-container" style="display: none;">
+            <div id="presentSection">
+                <h3>Present Self</h3>
+                <label>Upload your Business Card:</label>
+                <input type="file" id="presentImage" accept="image/*" />
+            </div>
+
+            <div id="futureSection" style="display:none;">
+                <h3>Future Self</h3>
+                <label>Upload your Business Card:</label>
+                <input type="file" id="futureImage" accept="image/*" />
+            </div>
+
+            <button class="btn-nav btn-next" id="nextBtnUpload" onclick="startQuestionnaire()"
+                style="margin-top: 20px; margin-left: auto; display: block;">Next →</button>
+        </div>
+
+        <div id="quiz" class="quiz-container">
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill" style="width:20%"></div>
+            </div>
+
+            <div id="questionCard" class="question-card fade-in">
+                <div class="question-number" id="questionNumber">Question 1 of 5</div>
+                <div class="question-text" id="questionText"></div>
+                <input type="text" id="answerInput" placeholder="Type your answer here...">
+            </div>
+
+            <div class="navigation">
+                <button class="btn-nav btn-back" id="backBtn" onclick="previousQuestion()">← Back</button>
+                <button class="btn-nav btn-next" id="nextBtnQuiz" onclick="nextQuestion()">Next →</button>
+                <button class="btn btn-submit" id="submitBtn" onclick="finishQuiz()"
+                    style="display:none; background-color: #28a745; color:white;">Submit ✅</button>
+            </div>
+        </div>
+
+        <div id="status" class="hidden">
+            <a id="arCardLink" href="/business.html" target="_blank" class="btn-nav btn-next"
+                style=" display: none; text-align: center; text-decoration: none; margin-bottom: 20px;">View AR Business
+                Card
+            </a>
+            <div id="statusText">Starting...</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="generationProgress"></div>
+            </div>
+        </div>
+
+        <h2 id="identityTitle" class="identity-title" style="display: none;">Your Digital Identity - AR Style</h2>
+        <img id="outputImage" alt="Generated image will appear here" />
+        <div class="action-links">
+            <a id="downloadLink" class="btn-nav btn-next" href="" download="model.glb">⬇️ Download 3D Model</a>
+            <a id="arLink" class="btn-nav btn-next" href="/ar.html" target="_blank">🪟 View AR Room</a>
         </div>
     </div>
 
-    <img id="outputImage" alt="Generated image will appear here" /><br />
-    <a id="downloadLink" href="" download="model.glb" style="display:none;">Download 3D Model →</a>
-    <a id="arLink" href="/ar.html" target="_blank" style="display:none;">View in AR →</a>
-
     <script>
-        async function startWorkflow() {
-            const prompt = document.getElementById("prompt").value;
-            if (!prompt) return alert("Please enter a prompt!");
+        const questions = {
+            present: [
+                "How would you describe yourself right now — your hairstyle, clothing, and small details?",
+                "What are some words that best capture your current vibe or energy?",
+                "What activity makes you lose track of time?",
+                "What's a value you hold closest right now?",
+                "What's one thing people often come to you for?"
+            ],
+            future: [
+                "How would you like to look in the future — your hairstyle, clothing, or style that feels most like you a year from now?",
+                "What are some words that best capture how you want to feel more often in the future?",
+                "What's a hobby or skill you'd love future-you to explore or master?",
+                "What's a quality you'd like to embody more strongly?",
+                "If you could become known for one thing in the future, what would it be?"
+            ]
+        };
 
-            const statusDiv = document.getElementById("status");
-            const statusText = document.getElementById("statusText");
-            const progressFill = document.getElementById("progressFill");
-            const generateBtn = document.getElementById("generateBtn");
-            const outputImage = document.getElementById("outputImage");
-            const downloadLink = document.getElementById("downloadLink");
-            const arLink = document.getElementById("arLink");
+        let currentQuiz = '', currentQuestion = 0, answers = {};
 
-            generateBtn.disabled = true;
-            statusDiv.className = "show";
-            statusText.textContent = "Generating image & uploading...";
-            progressFill.style.width = "10%";
-            downloadLink.style.display = "none";
-            arLink.style.display = "none";
+        function startQuiz(type) {
+            currentQuiz = type;
+
+            // Show image upload section
+            document.getElementById('home').classList.add('hidden');
+            document.getElementById('imageUpload').style.display = 'block';
+
+            // Show/hide appropriate image section
+            document.getElementById('presentSection').style.display = (type === 'present') ? 'block' : 'none';
+            document.getElementById('futureSection').style.display = (type === 'future') ? 'block' : 'none';
+        }
+
+        function startQuestionnaire() {
+            currentQuestion = 0;
+            answers = {};
+
+            document.getElementById('imageUpload').style.display = 'none';
+            document.getElementById('quiz').classList.remove('hidden');
+            document.getElementById('quiz').classList.add('visible', 'fade-in');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            document.getElementById('questionNumber').textContent = `Question ${currentQuestion + 1} of 5`;
+            document.getElementById('questionText').textContent = questions[currentQuiz][currentQuestion];
+            document.getElementById('answerInput').value = answers[currentQuestion] || '';
+            document.getElementById('answerInput').focus();
+
+            // Progress bar
+            document.getElementById('progressFill').style.width = (((currentQuestion + 1) / 5) * 100) + '%';
+            document.getElementById('backBtn').disabled = currentQuestion === 0;
+
+            // Toggle buttons
+            const nextBtn = document.getElementById('nextBtnQuiz');
+            const submitBtn = document.getElementById('submitBtn');
+
+            if (currentQuestion === 4) { // last question
+                nextBtn.style.display = 'none';
+                submitBtn.style.display = 'inline-block';
+            } else {
+                nextBtn.style.display = 'inline-block';
+                submitBtn.style.display = 'none';
+                nextBtn.textContent = 'Next →';
+            }
+
+            // Fade-in animation
+            const card = document.getElementById('questionCard');
+            card.classList.remove('fade-in');
+            setTimeout(() => { card.classList.add('fade-in'); }, 10);
+        }
+
+
+
+        function nextQuestion() {
+            answers[currentQuestion] = document.getElementById('answerInput').value.trim();
+            if (currentQuestion < 4) { currentQuestion++; showQuestion(); } else { finishQuiz(); }
+        }
+
+        function previousQuestion() {
+            if (currentQuestion > 0) { answers[currentQuestion] = document.getElementById('answerInput').value.trim(); currentQuestion--; showQuestion(); }
+        }
+
+        async function finishQuiz() {
+            answers[currentQuestion] = document.getElementById('answerInput').value.trim();
+            const answerArray = Object.values(answers);
+
+            document.getElementById('quiz').classList.add('hidden');
+            document.getElementById('status').classList.add('show');
+
+            const statusText = document.getElementById('statusText');
+            const progressFill = document.getElementById('generationProgress');
+            const outputImage = document.getElementById('outputImage');
+            const downloadLink = document.getElementById('downloadLink');
+            const arLink = document.getElementById('arLink');
+            const arCardLink = document.getElementById('arCardLink');
+
+            // Show AR card button
+            arCardLink.style.display = 'block';
 
             try {
-                // Step 1: Start GLB generation
+                statusText.textContent = "Generating image & uploading...";
+                progressFill.style.width = "10%";
+
                 const startRes = await fetch("/api/start-glb", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ prompt })
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ quizType: currentQuiz, answers: answerArray })
                 });
                 const startData = await startRes.json();
                 if (!startData.success) throw new Error(startData.error || "Failed to start generation");
 
-                // Show generated image immediately
-                outputImage.src = `${startData.imagePath}?${Date.now()}`;
+                outputImage.src = startData.imagePath + `?${Date.now()}`;
+                outputImage.style.display = "block";
+                document.getElementById('identityTitle').style.display = "block";
                 progressFill.style.width = "30%";
 
-                const taskId = startData.taskId;
-
-                // Step 2: Poll task status
-                let done = false;
-                let progress = 30;
+                let done = false, progress = 30;
                 while (!done) {
                     await new Promise(r => setTimeout(r, 3000));
-                    const statusRes = await fetch(`/api/check-task/${taskId}`);
+                    const statusRes = await fetch(`/api/check-task/${startData.taskId}`);
                     const statusData = await statusRes.json();
-
                     if (statusData.status === "completed" || statusData.status === "success") {
                         progressFill.style.width = "100%";
-                        downloadLink.href = statusData.glbUrl;
-                        downloadLink.style.display = "inline-block";
-                        arLink.style.display = "inline-block";
-                        statusText.textContent = "✅ 3D model ready!";
-                        done = true;
-                    } else if (statusData.status === "failed") {
-                        statusText.textContent = "✗ Task failed!";
-                        done = true;
+                        downloadLink.href = statusData.glbUrl; downloadLink.style.display = "inline-block";
+                        arLink.style.display = "inline-block"; statusText.textContent = "✅ 3D model ready!"; done = true;
+                    } else if (statusData.status === "failed") { statusText.textContent = "✗ Task failed!"; done = true; }
+                    else { progress = Math.min(progress + 5, 90); progressFill.style.width = progress + "%"; statusText.textContent = `Creating your AR Room...`; }
+                }
+            } catch (err) { statusText.textContent = "✗ Error: " + err.message; }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('answerInput').addEventListener('keypress', e => {
+                if (e.key === 'Enter') {
+                    if (currentQuestion === 4) {
+                        finishQuiz();
                     } else {
-                        // Increment progress bar gradually
-                        progress = Math.min(progress + 5, 90);
-                        progressFill.style.width = progress + "%";
-                        statusText.textContent = `Processing... (${statusData.status})`;
+                        nextQuestion();
                     }
                 }
-
-            } catch (err) {
-                statusText.textContent = "✗ Error: " + err.message;
-            } finally {
-                generateBtn.disabled = false;
-            }
-        }
+            });
+        });
     </script>
-
 </body>
 
 </html>
